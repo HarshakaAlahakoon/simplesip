@@ -1,0 +1,4 @@
+{ok, Socket} = gen_tcp:connect({127,0,0,1}, 8088, []).
+gen_tcp:send(Socket, "hey there").
+gen_tcp:close(Socket).
+f().
