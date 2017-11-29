@@ -65,6 +65,10 @@ process_sip_req(SipRec, SocketRec, LastState) ->
 						true ->
 							send(unauthorized(SipRec), SocketRec)
 					end;
+				invite ->
+					send(ringing(SipRec), SocketRec);
+				cancel ->
+					send(cancel(SipRec), SocketRec);
 				_ ->
 					error
 			end;
@@ -86,7 +90,36 @@ trying(SipRec) ->
 	ContentLen = "Content-Length: 0\r\n",
 	Status++Via++From++To++CallId++CSeq	++ContentLen++"\r\n".
 
+ringing(SipRec) ->
+	?info("Ringing...", []),
+	%% TODO:: sip version ??
+	Status = "SIP/2.0 180 Ringing\r\n",
+	Via = SipRec#sip_message.via ++ ";received=" ++ local_ip_v4_str() ++ "\r\n",
+	%% TODO:: what is tag and how to create it?
+	Tag = "37GkEhwl6",
+	From = "From: " ++ SipRec#sip_message.from ++ ";tag=" ++ Tag ++ "\r\n",
+	To = "To: " ++ SipRec#sip_message.to ++ "\r\n",
+	CallId = SipRec#sip_message.'call-id' ++ "\r\n",
+	CSeq = SipRec#sip_message.cseq ++ "\r\n",
+	ContentLen = "Content-Length: 0\r\n",
+	Status++Via++From++To++CallId++CSeq	++ContentLen++"\r\n".
+
+ok(SipRec) ->
+	?info("OK...", []),
+	%% TODO:: sip version ??
+	Status = "SIP/2.0 200 OK\r\n",
+	Via = SipRec#sip_message.via ++ ";received=" ++ local_ip_v4_str() ++ "\r\n",
+	%% TODO:: what is tag and how to create it?
+	Tag = "37GkEhwl6",
+	From = "From: " ++ SipRec#sip_message.from ++ ";tag=" ++ Tag ++ "\r\n",
+	To = "To: " ++ SipRec#sip_message.to ++ "\r\n",
+	CallId = SipRec#sip_message.'call-id' ++ "\r\n",
+	CSeq = SipRec#sip_message.cseq ++ "\r\n",
+	ContentLen = "Content-Length: 0\r\n",
+	Status++Via++From++To++CallId++CSeq	++ContentLen++"\r\n".
+
 registered(SipRec) ->
+	?info("Registered...", []),
 	%% TODO:: sip version ??
 	Status = "SIP/2.0 200 OK\r\n",
 	Via = SipRec#sip_message.via ++ ";received=" ++ local_ip_v4_str() ++ "\r\n",
@@ -119,7 +152,12 @@ unauthorized(SipRec) ->
 	Status++Via++From++To++CallId++CSeq++Authenticate++ContentLen++"\r\n".
 
 authorize() ->
+	%% TODO:: check authorization
 	passed.
+
+cancel(SipRec) ->
+	%% TODO::
+	ok(SipRec).
 
 send(Data, SocketRec) ->
 	gen_udp:send(SocketRec#socket_rec.socket, (SocketRec#socket_rec.client_addr)#client_addr.ip, (SocketRec#socket_rec.client_addr)#client_addr.in_port_no, Data).

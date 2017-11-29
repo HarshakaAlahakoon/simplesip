@@ -67,21 +67,17 @@ handle_udp_req(Packet, SocketRec, UdpTab) ->
 			StartTime = UdpConnRec#udp_connection.start_time,
 			LastUpdate = Now
 	end,
-	UpdatedState = case simplesip_sip_util:decode_sip(Packet) of
-		error ->
-			LastState;
-		SipRec ->
+	try simplesip_sip_util:decode_sip(Packet) of
+		SipRec when is_record(SipRec, sip_message) ->
 			simplesip_sip_wker:process_sip_req(SipRec, SocketRec, LastState),
-			Address = (SocketRec#socket_rec.client_addr)#client_addr.ip,
-			Port = (SocketRec#socket_rec.client_addr)#client_addr.in_port_no,
-			Socket = SocketRec#socket_rec.socket,
-			% gen_udp:send(Socket, Address, Port, Response),
-			SipRec#sip_message.method
-	end,
-	NewUdpConnRec = #udp_connection{
-		socket_rec = SocketRec,
-		last_state = UpdatedState,
-		start_time = StartTime,
-		last_update = LastUpdate
-	},
-	ets:insert(UdpTab, NewUdpConnRec).
+			NewUdpConnRec = #udp_connection{
+			socket_rec = SocketRec,
+			last_state = SipRec#sip_message.method,
+			start_time = StartTime,
+			last_update = LastUpdate
+			},
+			ets:insert(UdpTab, NewUdpConnRec)
+	catch
+		_:_ ->
+			ok
+	end.
