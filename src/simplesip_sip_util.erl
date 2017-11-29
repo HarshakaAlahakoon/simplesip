@@ -3,7 +3,8 @@
 
 -include("simplesip.hrl").
 
-decode(Packet) ->
+decode_sip(Packet) ->
+	?info("Packet : ~p", [Packet]),
 	MsgStr = binary:bin_to_list(Packet),
   	StrList = string:tokens(MsgStr, "\r\n"),
 	case extract_req_line(lists:nth(1, StrList)) of
@@ -23,10 +24,11 @@ decode(Packet) ->
 					% io:fwrite("~n~p::~p:: Message body : ~p~n", [?MODULE, ?LINE, SdpStrList]),
 					SdpRec = extract_sdp(#sdp_message{}, SdpStrList),
 					% io:fwrite("~n~p~n~p~n", [SipReqNew, SdpRec]);
-					SdpRec;
+					% SdpRec;
+					SipReqNew#sip_message{sdp = SdpRec};
 				_ ->
 					io:fwrite("~n~p::~p:: Empty message body~n", [?MODULE, ?LINE]),
-					ok
+					SipReqNew
 			end
   	end.
 
@@ -97,19 +99,22 @@ extract_header(SipRec, [Line | Rest]) ->
             		%% TODO:: do we need to extract dialog?
             		SipRec#sip_message{from = string:sub_string(Line, Position+2)};
           		'call-id' ->
-            		SipRec#sip_message{'call-id' = string:sub_string(Line, Position+2)};
+            		% SipRec#sip_message{'call-id' = string:sub_string(Line, Position+2)};
+            		SipRec#sip_message{'call-id' = Line};
           		via ->
             		SipRec#sip_message{via = lists:append(SipRec#sip_message.via, [Line])};
           		cseq ->
-            		[_, Seq, _] = string:tokens(Line, " "),
-            		{SeqInt, _} = string:to_integer(Seq),
-            		SipRec#sip_message{cseq = SeqInt};
+            		% [_, Seq, _] = string:tokens(Line, " "),
+            		% {SeqInt, _} = string:to_integer(Seq),
+            		% SipRec#sip_message{cseq = SeqInt};
+					SipRec#sip_message{cseq = Line};
           		'max-forwards' ->
             		[_, MFw] = string:tokens(Line, " "),
             		{MFwInt, _} = string:to_integer(MFw),
             		SipRec#sip_message{'max-forwards' = MFwInt};
           		contact ->
-            		SipRec#sip_message{contact = string:sub_string(Line, Position+2)};
+            		% SipRec#sip_message{contact = string:sub_string(Line, Position+2)};
+            		SipRec#sip_message{contact = Line};
           		'record-route' ->
             		SipRec#sip_message{'record-route' = string:sub_string(Line, Position+2)};
           		organization ->
