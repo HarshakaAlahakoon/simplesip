@@ -22,6 +22,12 @@ init(Args) ->
 		_ ->
 			ok
 	end,
+	case ets:info(sip_connections) of
+		undefined ->
+			ets:new(sip_connections,[set, named_table, public, {keypos, 2}]);
+		_ ->
+			ok
+	end,
 	{ok, #state{listen_port = UdpPort, udp_conn_tab = UdpTab}}.
 
 handle_cast(do_open, State) ->

@@ -25,7 +25,7 @@ decode_sip(Packet) ->
 					SdpRec = extract_sdp(#sdp_message{}, SdpStrList),
 					% io:fwrite("~n~p~n~p~n", [SipReqNew, SdpRec]);
 					% SdpRec;
-					SipReqNew#sip_message{sdp = SdpRec};
+					SipReqNew#sip_message{sdp_message = SdpRec};
 				_ ->
 					io:fwrite("~n~p::~p:: Empty message body~n", [?MODULE, ?LINE]),
 					SipReqNew
@@ -69,6 +69,7 @@ extract_req_line(Str) ->
 		end
 	end.
 
+%% TODO:: add support for compact-types...ex: 'content-length'==l
 extract_header(SipRec, []) ->
   	SipRec;
 extract_header(SipRec, [Line | Rest]) ->
@@ -157,15 +158,17 @@ extract_sdp(SdpRec, [Line | Rest]) ->
 			[Uname, SessId, V, NetType, AddType, Addr] = string:tokens(Str, " "),
 			SdpOri = #sdp_origin{
 				username = Uname,
-				session_id = SessId,
-				version = V,
+				session_id = simplesip_sip_util:string_to_int(SessId),
+				version = simplesip_sip_util:string_to_int(V),
 				network_type = NetType,
 				address_type = AddType,
 				address = Addr
 			},
 			SdpRec#sdp_message{o = SdpOri};
+			% SdpRec#sdp_message{o = Line};
 		s ->
-			SdpRec#sdp_message{s = Str};
+			% SdpRec#sdp_message{s = Str};
+			SdpRec#sdp_message{s = Line};
 		i ->
 			%% TODO:: how to store and use this?
 			SdpRec#sdp_message{i = lists:append(SdpRec#sdp_message.i, [Str])};
@@ -221,11 +224,20 @@ extract_sdp(SdpRec, [Line | Rest]) ->
 		m ->
 			%% TODO:: how to store and use this?
 			TokenList = string:tokens(Str, " "),
+			Fun = fun(A) ->
+				case string:to_integer(A) of
+					{error, _} ->
+						undefined;
+					{Int, _} ->
+						Int
+				end
+			end,
+			Fmt = lists:map(Fun, lists:nthtail(3, TokenList)),
 			MediaRec = #media{
-				media = lists:nth(1, TokenList),
-				port = lists:nth(2, TokenList),
+				media = string_to_atom(lists:nth(1, TokenList)),
+				port = string_to_int(lists:nth(2, TokenList)),
 				protocol = lists:nth(3, TokenList),
-				fmt_list = lists:nthtail(3, TokenList)
+				fmt_list = Fmt
 			},
 			SdpRec#sdp_message{m = lists:append(SdpRec#sdp_message.m, [MediaRec])};
 		_ ->
@@ -238,7 +250,7 @@ extract_attribute(Str) ->
 		[Flag] ->
 			#attribute{
 				type = property,
-				flag = Flag
+				attribute = Flag
 			};
 		[Attr, Value] ->
 			case string_to_atom(Attr) of
@@ -249,10 +261,12 @@ extract_attribute(Str) ->
 						[Fmt, Enc, Clk, Para] ->
 							ok
 					end,
+					{FmtInt, _} = string:to_integer(Fmt),
+					{ClkInt, _} = string:to_integer(Clk),
 					NewValue = #rtpmap{
-						fmt = Fmt,
+						fmt = FmtInt,
 						encoding = Enc,
-						clock_rate = Clk,
+						clock_rate = ClkInt,
 						encoding_para = Para
 					},
 					ok;
@@ -266,6 +280,52 @@ extract_attribute(Str) ->
 			}
 	end.
 
+get_compatible_audio(MediaList, AttribList) ->
+	%% TODO:: can this be passed from the udp_wker ??
+	{ok, SvrRtpList} = application:get_env(simplesip, rtpmaps),
+	% ?info("SvrRtpList : ~p", [SvrRtpList]),
+	Fun1 = fun(Attrib, AccIn1) ->
+		{AttribList1, FmtList} = AccIn1,
+		if
+			Attrib#attribute.attribute == rtpmap ->
+				Rtp = Attrib#attribute.value,
+				case lists:keyfind(Rtp#rtpmap.fmt, 2, SvrRtpList) of
+					false ->
+						AccIn1;
+					SvrRtp ->
+						if
+							SvrRtp#rtpmap.clock_rate ==  Rtp#rtpmap.clock_rate ->
+								case lists:member(Attrib, AttribList1) of
+									true ->
+										AccIn1;
+									false ->
+										?info("Attrib : ~p", [Attrib]),
+										{AttribList1++[Attrib], FmtList++[Rtp#rtpmap.fmt]}
+								end;
+							true ->
+								AccIn1
+						end
+				end;
+			true ->
+				AccIn1
+		end
+	end,
+	Fun2 = fun(Media, AccIn2) ->
+		% ?info("Media : ~p", [Media]),
+		if
+			%% TODO:: reconsider the protocol check
+			(Media#media.media == audio) and (Media#media.protocol == "RTP/AVP")->
+				{OldMediaList, OldAttrbList} = AccIn2,
+				{NewAttrbList, FmtList}= lists:foldl(Fun1, {OldAttrbList, []}, AttribList),
+				%% TODO:: what about a different port ??
+				{ok, Port} = application:get_env(simplesip, rtp_port),
+				{OldMediaList ++ [Media#media{port = Port, fmt_list = FmtList}], NewAttrbList};
+			true ->
+				AccIn2
+		end
+	end,
+	lists:foldl(Fun2, {[], []}, MediaList).
+%% ----------------------------------------------------------------------------------
 string_to_atom(Str) ->
 	try erlang:list_to_existing_atom(Str) of
 		Atom ->
@@ -274,3 +334,15 @@ string_to_atom(Str) ->
 		_:_ ->
 			erlang:list_to_atom(Str)
 	end.
+
+string_to_int(Str) ->
+	{Int, _} = string:to_integer(Str),
+	Int.
+
+local_ip_v4_str() ->
+    {ok, Addrs} = inet:getifaddrs(),
+    {A, B, C, D} = hd([
+         Addr || {_, Opts} <- Addrs, {addr, Addr} <- Opts,
+         size(Addr) == 4, Addr =/= {127,0,0,1}
+    ]),
+	lists:concat([A, ".", B, ".", C, ".", D]).

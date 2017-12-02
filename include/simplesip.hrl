@@ -2,7 +2,9 @@
 -define(SIMPLESIP_HRL, 1).
 
 -define(info(Msg, Args), io:fwrite(
-	"~n~p::~p:: "++Msg, [?MODULE, ?LINE]++Args)).
+	"~n~p::~p:: "++Msg++"~n", [?MODULE, ?LINE]++Args)).
+
+% -define(utils, simplesip_sip_util).
 
 -record(client_addr, {
 	ip,
@@ -16,12 +18,20 @@
 
 -record(udp_connection, {
 	socket_rec,
-	last_state,
+	% last_state,
 	start_time,
 	last_update
 	}).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%			SIP protocol		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+-record(sip_connection,{
+		socket_rec,
+		authorized,		%% true/false
+		register,
+		invite,
+		ack
+	}).
+
 -record(sip_message, {
   	type,
   	method,
@@ -45,7 +55,7 @@
   	'content-type',
   	'content-length',
   	'user-agent',
-  	sdp
+  	sdp_message
 	}).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%			SDP protocol		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -104,7 +114,7 @@
 
 -record(attribute, {
 	type,	%% property (flags) / value (media types)
-	flag,
+	% flag,
 	attribute,
 	value
 	}).

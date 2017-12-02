@@ -59,20 +59,20 @@ handle_udp_req(Packet, SocketRec, UdpTab) ->
 	Now = calendar:local_time(),
 	case ets:lookup(UdpTab, SocketRec) of
 		[] ->
-			LastState = undefined,
+			% LastState = undefined,
 			StartTime = Now,
 			LastUpdate = Now;
 		[UdpConnRec] ->
-			LastState = UdpConnRec#udp_connection.last_state,
+			% LastState = UdpConnRec#udp_connection.last_state,
 			StartTime = UdpConnRec#udp_connection.start_time,
 			LastUpdate = Now
 	end,
 	try simplesip_sip_util:decode_sip(Packet) of
 		SipRec when is_record(SipRec, sip_message) ->
-			simplesip_sip_wker:process_sip_req(SipRec, SocketRec, LastState),
+			simplesip_sip_wker:process_sip_req(SipRec, SocketRec),
 			NewUdpConnRec = #udp_connection{
 			socket_rec = SocketRec,
-			last_state = SipRec#sip_message.method,
+			% last_state = SipRec#sip_message.method,
 			start_time = StartTime,
 			last_update = LastUpdate
 			},
