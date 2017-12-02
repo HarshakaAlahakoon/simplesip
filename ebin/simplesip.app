@@ -8,6 +8,8 @@
 	{env, [
 		{sip_port, 5000},
 		{udp_port, 8789},
+		{rtp_port, 8000},
+		{rtpmaps, [{rtpmap, 3, "GSM", 8000, []}, {rtpmap, 101, "telephone-event", 8000, []}]},
 		{udp_conn_tab, udp_connections}
 	]}
  ]}.
