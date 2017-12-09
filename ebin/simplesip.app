@@ -6,10 +6,11 @@
    	{applications, [kernel, stdlib, sasl]},
    	{mod, {simplesip_app,[]}},
 	{env, [
-		{sip_port, 5000},
-		{udp_port, 8789},
-		{rtp_port, 8000},
-		{rtpmaps, [{rtpmap, 3, "GSM", 8000, []}, {rtpmap, 101, "telephone-event", 8000, []}]},
-		{udp_conn_tab, udp_connections}
+		{sip_port, 8789},
+		{rtp_port, 8008},
+		% {rtpmaps, [{rtpmap, 3, "GSM", 8000, []}, {rtpmap, 101, "telephone-event", 8000, []}]},
+		{rtpmaps, [{rtpmap, 0, pcmu, 8000, []}, {rtpmap, 101, 'telephone-event', 8000, []}]},
+		{sip_conn_tab, sip_connections},
+		{rtp_conn_tab, rtp_connections}
 	]}
  ]}.

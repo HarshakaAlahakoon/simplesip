@@ -55,28 +55,36 @@
 %% --------------------------	UDP functions	----------------------------- %%
 
 %% TODO:: recognize the packet/request type
-handle_udp_req(Packet, SocketRec, UdpTab) ->
+handle_sip_req(Packet, SocketRec, SipTab) ->
 	Now = calendar:local_time(),
-	case ets:lookup(UdpTab, SocketRec) of
+	case ets:lookup(SipTab, SocketRec) of
 		[] ->
-			% LastState = undefined,
-			StartTime = Now,
-			LastUpdate = Now;
-		[UdpConnRec] ->
-			% LastState = UdpConnRec#udp_connection.last_state,
-			StartTime = UdpConnRec#udp_connection.start_time,
-			LastUpdate = Now
+			StartTime = Now;
+		[SipConnRec] ->
+			StartTime = SipConnRec#sip_connection.start_time
 	end,
 	try simplesip_sip_util:decode_sip(Packet) of
 		SipRec when is_record(SipRec, sip_message) ->
 			simplesip_sip_wker:process_sip_req(SipRec, SocketRec),
-			NewUdpConnRec = #udp_connection{
+			NewSipConnRec = #sip_connection{
 			socket_rec = SocketRec,
-			% last_state = SipRec#sip_message.method,
 			start_time = StartTime,
-			last_update = LastUpdate
+			last_update = Now
 			},
-			ets:insert(UdpTab, NewUdpConnRec)
+			ets:insert(SipTab, NewSipConnRec)
+	catch
+		% _:_ ->
+		A:B ->
+			?info("ERROR~n~p : ~p", [A, B]),
+			ok
+	end.
+
+handle_rtp_msg(Packet, SocketRec) ->
+	try simplesip_rtp_util:decode_rtp(Packet) of
+		RtpRec when is_record(RtpRec, rtp_message) ->
+			simplesip_rtp_wker:process_rtp_req(RtpRec, SocketRec);
+		ok ->
+			ok
 	catch
 		_:_ ->
 			ok

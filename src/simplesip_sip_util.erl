@@ -4,7 +4,7 @@
 -include("simplesip.hrl").
 
 decode_sip(Packet) ->
-	?info("Packet : ~p", [Packet]),
+	% ?info("Packet : ~p", [Packet]),
 	MsgStr = binary:bin_to_list(Packet),
   	StrList = string:tokens(MsgStr, "\r\n"),
 	case extract_req_line(lists:nth(1, StrList)) of
@@ -184,9 +184,9 @@ extract_sdp(SdpRec, [Line | Rest]) ->
 			ConnData = #connection_data{
 				network_type = lists:nth(1, TokenList),
 				address_type = lists:nth(2, TokenList),
-				connection_address = lists:nth(3, TokenList)
+				connection_address = ip_str_to_erl_ip(lists:nth(3, TokenList))
 			},
-			SdpRec#sdp_message{c = lists:append(SdpRec#sdp_message.c, [ConnData])};
+			SdpRec#sdp_message{c = ConnData};
 		b ->
 			%% TODO:: how to store and use this?
 			SdpRec#sdp_message{b = lists:append(SdpRec#sdp_message.b, [Str])};
@@ -234,7 +234,7 @@ extract_sdp(SdpRec, [Line | Rest]) ->
 			end,
 			Fmt = lists:map(Fun, lists:nthtail(3, TokenList)),
 			MediaRec = #media{
-				media = string_to_atom(lists:nth(1, TokenList)),
+				media = string_to_atom(string:to_lower(lists:nth(1, TokenList))),
 				port = string_to_int(lists:nth(2, TokenList)),
 				protocol = lists:nth(3, TokenList),
 				fmt_list = Fmt
@@ -339,10 +339,22 @@ string_to_int(Str) ->
 	{Int, _} = string:to_integer(Str),
 	Int.
 
+ip_str_to_erl_ip(IpStr) ->
+	[A, B, C, D] = string:tokens(IpStr, "."),
+	AInt = string_to_int(A),
+	BInt = string_to_int(B),
+	CInt = string_to_int(C),
+	DInt = string_to_int(D),
+	{AInt, BInt, CInt, DInt}.
+
 local_ip_v4_str() ->
     {ok, Addrs} = inet:getifaddrs(),
     {A, B, C, D} = hd([
          Addr || {_, Opts} <- Addrs, {addr, Addr} <- Opts,
          size(Addr) == 4, Addr =/= {127,0,0,1}
     ]),
+	lists:concat([A, ".", B, ".", C, ".", D]).
+
+ip_to_str(Ip) ->
+	{A, B, C, D} = Ip,
 	lists:concat([A, ".", B, ".", C, ".", D]).

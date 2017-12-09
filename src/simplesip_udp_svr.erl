@@ -5,35 +5,67 @@
 -include("simplesip.hrl").
 
 -record(state, {
-	listen_port,
-	udp_conn_tab
+	sip_port,
+	sip_socket,
+	rtp_port,
+	rtp_socket,
+	rtcp_port,
+	rtcp_socket,
+	sip_conn_tab,
+	rtp_conn_tab
 }).
 
 start_link() ->
 	gen_server:start_link({local, simplesip_udp_svr}, simplesip_udp_svr, [], []).
 
 init(Args) ->
-	{ok, UdpPort} = application:get_env(simplesip, udp_port),
-	{ok, UdpTab} = application:get_env(simplesip, udp_conn_tab),
-	{ok, AcceptedSocket} = gen_udp:open(UdpPort, [binary, {active,true}, {reuseaddr, true}]),
-	case ets:info(UdpTab) of
+	{ok, SipPort} = application:get_env(simplesip, sip_port),
+	{ok, RtpPort} = application:get_env(simplesip, rtp_port),
+	{ok, SipTab} = application:get_env(simplesip, sip_conn_tab),
+	{ok, RtpTab} = application:get_env(simplesip, rtp_conn_tab),
+	{ok, SipSocket} = gen_udp:open(SipPort, [binary, {active,true}, {reuseaddr, true}]),
+	{ok, RtpSocket} = gen_udp:open(RtpPort, [binary, {active,true}, {reuseaddr, true}]),
+	RTCP_Port = simplesip_rtp_util:get_matching_rtcp_port(RtpPort),
+	{ok, RTCP_Socket} = gen_udp:open(RTCP_Port, [binary, {active,true}, {reuseaddr, true}]),
+	case ets:info(SipTab) of
 		undefined ->
-			ets:new(UdpTab,[set, named_table, public, {keypos, 2}]);
+			ets:new(SipTab,[set, named_table, public, {keypos, 2}]);
 		_ ->
 			ok
 	end,
-	case ets:info(sip_connections) of
+	case ets:info(RtpTab) of
 		undefined ->
-			ets:new(sip_connections,[set, named_table, public, {keypos, 2}]);
+			ets:new(RtpTab,[set, named_table, public, {keypos, 2}]);
 		_ ->
 			ok
 	end,
-	{ok, #state{listen_port = UdpPort, udp_conn_tab = UdpTab}}.
+	case ets:info(ports) of
+		undefined ->
+			ets:new(ports,[set, named_table, public, {keypos, 2}]);
+		_ ->
+			ok
+	end,
+	ets:insert(ports, [
+		#port_rec{protocol = sip, port = SipPort, socket = SipSocket},
+		#port_rec{protocol = rtp, port = RtpPort, socket = RtpSocket},
+		#port_rec{protocol = rtcp, port = RTCP_Port, socket = RTCP_Socket}
+	]),
+	{ok, #state{
+		sip_port = SipPort,
+		sip_socket = SipSocket,
+		rtp_port = RtpPort,
+		rtp_socket = RtpSocket,
+		rtcp_port = RTCP_Port,
+		rtcp_socket = RTCP_Socket,
+		sip_conn_tab = SipTab,
+		rtp_conn_tab = RtpTab
+		}
+	}.
 
-handle_cast(do_open, State) ->
-	io:fwrite("~n~p:: Opening a UDP socket for port ~p~n", [?MODULE, State#state.listen_port]),
-	{ok, AcceptedSocket} = gen_udp:open(State#state.listen_port, [binary, {active,true}, {reuseaddr, true}]),
-	{noreply, State};
+% handle_cast(do_open, State) ->
+% 	io:fwrite("~n~p:: Opening a UDP socket for port ~p~n", [?MODULE, State#state.listen_port]),
+% 	{ok, AcceptedSocket} = gen_udp:open(State#state.listen_port, [binary, {active,true}, {reuseaddr, true}]),
+% 	{noreply, State};
 handle_cast(Request, State) ->
 	{noreply, State}.
 
@@ -46,7 +78,16 @@ handle_info({udp, Socket, IP, InPortNo, Packet} = Msg, State) ->
 		client_addr = ClientAddr,
 		socket = Socket
 	},
-	proc_lib:spawn(simplesip_udp_wker, handle_udp_req, [Packet, SocketRec, State#state.udp_conn_tab]),
+	if
+		Socket == State#state.sip_socket ->
+			% ?info("~p", [Packet]),
+			proc_lib:spawn(simplesip_udp_wker, handle_sip_req, [Packet, SocketRec, State#state.sip_conn_tab]);
+		Socket == State#state.rtp_socket ->
+			proc_lib:spawn(simplesip_udp_wker, handle_rtp_msg, [Packet, SocketRec]);
+		true ->
+			ok
+	end,
+
 	{noreply, State};
 handle_info({udp_closed, Socket}, State) ->
 	io:fwrite("~n~p:: socket_closed ~p~n", [?MODULE, Socket]),

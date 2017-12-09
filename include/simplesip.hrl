@@ -15,22 +15,26 @@
 	client_addr,
 	socket
 	}).
+-type socket_rec() :: #socket_rec{}.
 
--record(udp_connection, {
-	socket_rec,
-	% last_state,
-	start_time,
-	last_update
+-record(port_rec,{
+	protocol :: sip | rtp,
+	port,
+	socket
 	}).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%			SIP protocol		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 -record(sip_connection,{
 		socket_rec,
 		authorized,		%% true/false
 		register,
 		invite,
-		ack
+		ack,
+		start_time,
+		last_update
 	}).
+-type sip_connection() :: #sip_connection{}.
 
 -record(sip_message, {
   	type,
@@ -84,6 +88,7 @@
 	protocol,			% transport protocol
 	fmt_list = []		% media format descriptions
 	}).
+-type media() :: #media{}.
 
 -record(rtpmap, {
 	fmt,
@@ -91,6 +96,7 @@
 	clock_rate,
 	encoding_para = []
 	}).
+-type rtpmap() :: #rtpmap{}.
 
 -record(sdp_origin, {
 	username,
@@ -113,11 +119,12 @@
 	}).
 
 -record(attribute, {
-	type,	%% property (flags) / value (media types)
+	type ::	property | value,	%% property (flags) / value (media types)
 	% flag,
 	attribute,
 	value
 	}).
+-type attribute() :: #attribute{}.
 
 -record(time,{
 	start,
@@ -128,6 +135,31 @@
 	repeat_interval,
 	active_duration,
 	offsets_from_start = []
+	}).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	RTP	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+-record(rtp_connection,{
+		profile	:: rtp_profile(),
+		connection_address,
+		active_media :: media(),
+		media_types	:: [] | [media()],
+		attributes :: [] | [attribute()],
+		ptime :: integer(),
+		authorized	::	true | false,
+		start_time,
+		last_update
+	}).
+-type rtp_connection()	:: #rtp_connection{}.
+
+-record(rtp_profile, {
+	caller,
+	socket_rec	::	socket_rec()
+	}).
+-type rtp_profile() :: #rtp_profile{}.
+
+-record(rtp_message, {
+		foo
 	}).
 
 -endif.
