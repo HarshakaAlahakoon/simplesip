@@ -318,7 +318,8 @@ get_compatible_audio(MediaList, AttribList) ->
 				{OldMediaList, OldAttrbList} = AccIn2,
 				{NewAttrbList, FmtList}= lists:foldl(Fun1, {OldAttrbList, []}, AttribList),
 				%% TODO:: what about a different port ??
-				{ok, Port} = application:get_env(simplesip, rtp_port),
+				% {ok, Port} = application:get_env(simplesip, rtp_port),
+				Port = 7000,
 				{OldMediaList ++ [Media#media{port = Port, fmt_list = FmtList}], NewAttrbList};
 			true ->
 				AccIn2

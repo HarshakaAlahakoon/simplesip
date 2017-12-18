@@ -6,6 +6,8 @@
 
 % -define(utils, simplesip_sip_util).
 
+-type ip4_address() :: {A :: integer(), B :: integer(), C :: integer(), D :: integer()}.
+
 -record(client_addr, {
 	ip,
 	in_port_no
@@ -110,7 +112,7 @@
 -record(connection_data, {
 	network_type,
 	address_type,
-	connection_address
+	connection_address :: ip4_address()
 	}).
 
 -record(encryption_key, {
@@ -141,7 +143,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	RTP	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 -record(rtp_connection,{
 		profile	:: rtp_profile(),
-		connection_address,
+		connection_address :: ip4_address(),
 		active_media :: media(),
 		media_types	:: [] | [media()],
 		attributes :: [] | [attribute()],

@@ -77,7 +77,8 @@ process_sip_req(SipRec, SocketRec) ->
 					timer:sleep(2000),
 					send(OK, SocketRec),
 					timer:sleep(1000),
-					simplesip_rtp_util:send_wav();
+					gen_server:cast(simplesip_rtp_streamer, send_wav);
+					% simplesip_rtp_util:send_wav();
 				bye ->
 					send(ok(SipRec), SocketRec);
 				cancel ->

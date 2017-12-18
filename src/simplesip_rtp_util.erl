@@ -27,7 +27,7 @@ decode_rtp(Packet, SoundFile) ->
 % 	NewInt = Int + erlang:trunc(math:pow(2, Power)),
 % 	bit_to_int(NewInt, Power+1, Rest).
 
-encode_rtp(PayLoad, SSRC_Int, SeqNumInt, IsMarker) ->
+encode_rtp(PayLoad, SSRC_Int, SeqNumInt, IsMarker, Time) ->
 	Version = <<2:2>>,		%% 2 bits long
 	Padding = <<0:1>>,		%% 1 bit long
 	Extention = <<0:1>>,
@@ -42,7 +42,7 @@ encode_rtp(PayLoad, SSRC_Int, SeqNumInt, IsMarker) ->
 	PayLoadTypeInt = 0,	%% PCMU
 	PayLoadType = <<PayLoadTypeInt:7>>,
 	H2 = <<Marker/bits, PayLoadType/bits>>,
-	Time = calendar:datetime_to_gregorian_seconds(calendar:local_time()),
+	% Time = calendar:datetime_to_gregorian_seconds(calendar:local_time()),
 	TimeStamp = <<Time:32>>,
 	%% TODO:: device a method for SSRC
 	SSRC = <<SSRC_Int:32>>,
@@ -108,13 +108,17 @@ send_rtcp_start() ->
 send_wav() ->
 	[RtpConnRec | _] = ets:tab2list(rtp_connections),
 	% {_, _, _, Data} = wave:read("/home/aryan/Desktop/tmp/jeena_uLaw.wav"),
-	{_, _, _, Data} = wave:read("/home/aryan/Desktop/tmp/test.wav"),
+	% {_, _, _, Data} = wave:read("/home/aryan/Desktop/tmp/test.wav"),
+	{ok, Data} = file:read_file("/home/aryan/Desktop/tmp/test.wav"),
+	% {ok, Data} = file:read_file("/home/aryan/Desktop/tmp/jeena_uLaw.wav"),
 	% ?info("Data : ~p", [Data]),
 	[#port_rec{protocol = rtp, socket = RtpSocket}] = ets:lookup(ports, rtp),
-	send_wav(RtpConnRec, RtpSocket, 123456, 0, true, <<Data/binary>>).
-send_wav(_, _, _, _, _, <<>>) ->
+	% send_wav(RtpConnRec, RtpSocket, 123456, 0, true, <<Data/binary>>).
+	Time = calendar:datetime_to_gregorian_seconds(calendar:local_time()),
+	send_wav(RtpConnRec, RtpSocket, 123456, 0, true, Time, Data).
+send_wav(_, _, _, _, _, _, <<>>) ->
 	ok;
-send_wav(RtpConnRec, RtpSocket, SSRC_Int, SeqNumInt, IsMarker, Data) ->
+send_wav(RtpConnRec, RtpSocket, SSRC_Int, SeqNumInt, IsMarker, Time, Data) ->
 	case erlang:byte_size(Data) of
 		Size when Size >= 160 ->
 			<<PayLoad:160/binary, Rest/binary>> = Data;
@@ -125,8 +129,8 @@ send_wav(RtpConnRec, RtpSocket, SSRC_Int, SeqNumInt, IsMarker, Data) ->
 	#media{port = EndPort} = RtpConnRec#rtp_connection.active_media,
 	IP = RtpConnRec#rtp_connection.connection_address,
 	timer:sleep(20),
-	send(RtpSocket, IP, EndPort, encode_rtp(PayLoad, SSRC_Int, SeqNumInt, IsMarker)),
-	send_wav(RtpConnRec, RtpSocket, SSRC_Int, SeqNumInt+1, false, Rest).
+	send(RtpSocket, IP, EndPort, encode_rtp(PayLoad, SSRC_Int, SeqNumInt, IsMarker, Time)),
+	send_wav(RtpConnRec, RtpSocket, SSRC_Int, SeqNumInt+1, false, Time+160, Rest).
 
 send(Data, SocketRec) ->
 	gen_udp:send(SocketRec#socket_rec.socket, (SocketRec#socket_rec.client_addr)#client_addr.ip, (SocketRec#socket_rec.client_addr)#client_addr.in_port_no, Data).

@@ -13,6 +13,8 @@ init(_Args) ->
         % 	permanent, infinity, supervisor, [simplesip_udp_wker_sup]},
 		% {simplesip_sip_wker_sup, {simplesip_sip_wker_sup, start_link, []},
 	    %     permanent, infinity, supervisor, [simplesip_sip_wker_sup]},
+        {simplesip_rtp_streamer, {simplesip_rtp_streamer, start_link, []},
+        	permanent, brutal_kill, worker, [simplesip_rtp_streamer]},
         {simplesip_tcp_svr, {simplesip_tcp_svr, start_link, []},
         	permanent, brutal_kill, worker, [simplesip_tcp_svr]},
         {simplesip_udp_svr, {simplesip_udp_svr, start_link, []},

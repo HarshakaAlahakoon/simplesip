@@ -1,3 +1,5 @@
 *.beam
 *.txt
 test.erl
+*crash.dump
+*.erl-bk*
