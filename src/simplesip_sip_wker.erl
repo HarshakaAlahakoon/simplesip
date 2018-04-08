@@ -46,8 +46,9 @@
 %% ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ %%
 %% --------------------------	SIP functions	----------------------------- %%
 
-process_sip_req(SipRec, SocketRec) ->
+process_sip_req(SipTab, OldConnRec, SipRec, SocketRec) ->
 	% ?info("LastState : ~p", [LastState]),
+	Now = calendar:local_time(),
 	case SipRec#sip_message.type of
 		method ->
 			case SipRec#sip_message.method of
@@ -71,16 +72,71 @@ process_sip_req(SipRec, SocketRec) ->
 					% 	false ->
 					% 		send(unauthorized(SipRec), SocketRec)
 					% end;
-					send(ringing(SipRec), SocketRec),
-					OK = ok_sdp(SipRec, SocketRec),
-					simplesip_rtp_util:send_rtcp_start(),
-					timer:sleep(2000),
-					send(OK, SocketRec),
-					timer:sleep(1000),
-					gen_server:cast(simplesip_rtp_streamer, send_wav);
-					% simplesip_rtp_util:send_wav();
+
+					if
+						((OldConnRec /= []) and (OldConnRec#sip_connection.invite /= undefined)) ->
+							if
+								((OldConnRec#sip_connection.register)#sip_message.cseq == SipRec#sip_message.cseq)->
+									% A Re-Request INVITE (i.e. A duplicate)
+									ok;
+								true ->
+								% TODO:
+									ok
+									% NewSipConnRec = #sip_connection{
+									% 	socket_rec = SocketRec,
+									% 	invite = SipRec,
+									% 	start_time = OldConnRec#sip_connection.start_time,
+									% 	last_update = Now
+									% },
+									% ets:insert(SipTab, NewSipConnRec),
+									% send(ringing(SipRec), SocketRec),
+									% OK = ok_sdp(SipRec, SocketRec),
+									% simplesip_rtp_util:send_rtcp_start(),
+									% timer:sleep(2000),
+									% send(OK, SocketRec),
+									% timer:sleep(1000),
+									% gen_server:cast(simplesip_rtp_streamer, send_wav)
+									% % simplesip_rtp_util:send_wav();
+							end;
+						((OldConnRec /= []) and (OldConnRec#sip_connection.invite == undefined)) ->
+							NewSipConnRec = #sip_connection{
+								socket_rec = SocketRec,
+								invite = SipRec,
+								start_time = OldConnRec#sip_connection.start_time,
+								last_update = Now
+							},
+							ets:insert(SipTab, NewSipConnRec),
+							send(ringing(SipRec), SocketRec),
+							OK = ok_sdp(SipRec, SocketRec),
+							simplesip_rtp_util:send_rtcp_start(),
+							timer:sleep(2000),
+							send(OK, SocketRec),
+							timer:sleep(1000),
+							gen_server:cast(simplesip_rtp_streamer, send_wav);
+						true ->
+							NewSipConnRec = #sip_connection{
+								socket_rec = SocketRec,
+								invite = SipRec,
+								start_time = Now,
+								last_update = Now
+							},
+							ets:insert(SipTab, NewSipConnRec),
+							send(ringing(SipRec), SocketRec),
+							OK = ok_sdp(SipRec, SocketRec),
+							simplesip_rtp_util:send_rtcp_start(),
+							timer:sleep(2000),
+							send(OK, SocketRec),
+							timer:sleep(1000),
+							gen_server:cast(simplesip_rtp_streamer, send_wav)
+					end;
 				bye ->
-					send(ok(SipRec), SocketRec);
+					send(ok(SipRec), SocketRec),
+					NewSipConnRec = #sip_connection{
+						socket_rec = SocketRec,
+						start_time = OldConnRec#sip_connection.start_time,
+						last_update = Now
+					},
+					ets:insert(SipTab, NewSipConnRec);
 				cancel ->
 					send(cancel(SipRec), SocketRec);
 				_ ->

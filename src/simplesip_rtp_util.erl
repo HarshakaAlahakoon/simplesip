@@ -3,8 +3,7 @@
 
 -include("simplesip.hrl").
 
-decode_rtp(Packet, SoundFile) ->
-	% ?info("RTP Packet ::~p", [Packet]),
+decode_rtp(Packet) ->
 	% ?info("RTP Packet Length ::~p", [erlang:byte_size(Packet)]),
 	<<H1:1/binary, H2:1/binary, SeqNum:2/binary, Rest1/binary>> = Packet,
 	<<Version:2, Padding:1, Extention:1, CRSC_Count/bits>> = H1,
@@ -12,11 +11,15 @@ decode_rtp(Packet, SoundFile) ->
 	<<CRSC_CountInt:4>> = CRSC_Count,
 	CRSC_length = 8 * CRSC_CountInt,
 	<<TimeStamp:4/binary, SSRC:4/binary, CSRC_BinList:CRSC_length/binary, PayLoad/binary>> = Rest1,
-	<<PayLoadTypeInt:7>> = PayLoadType,
+	% <<PayLoadTypeInt:7>> = PayLoadType,
 	TimeStampInt = binary:decode_unsigned(TimeStamp),
 	SSRC_Int = binary:decode_unsigned(SSRC),
-	% ?info("PayLoad  :: ~p", [PayLoad]),
-	% file:write(SoundFile, PayLoad),
+	if
+		PayLoadType == ?TELEPHONE_EVENT ->
+			?info("PayLoadType  :: ~p", [PayLoadType]);
+		true ->
+			ok
+	end,
 	#rtp_message{}.
 
 % bit_to_int(_10_List) ->

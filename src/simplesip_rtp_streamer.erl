@@ -33,7 +33,6 @@ handle_cast(send_wav, State) ->
 	{noreply, State};
 handle_cast(test, State) ->
 	State#state.c_port ! {self(), {command, c_iface:encode({foo, 1})}},
-	io:fwrite("~n~p:: test : ~p~n", [?MODULE, State#state.c_port]),
 	{noreply, State};
 handle_cast(Request, State) ->
 	{noreply, State}.
@@ -42,7 +41,7 @@ handle_call(Request, From, State) ->
 	{noreply, State}.
 
 handle_info(Msg, State) ->
-	io:fwrite("~n~p:: received : ~p~n", [?MODULE, Msg]),
+	?info("received : ~p", [Msg]),
     {noreply, State}.
 
 code_change(OldVsn, State, Extra) ->

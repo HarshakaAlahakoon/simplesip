@@ -59,19 +59,22 @@ handle_sip_req(Packet, SocketRec, SipTab) ->
 	Now = calendar:local_time(),
 	case ets:lookup(SipTab, SocketRec) of
 		[] ->
-			StartTime = Now;
+			io:fwrite("~nNO RECORD for SocketRec : ~p", [SocketRec]),
+			% StartTime = Now,
+			OldConnRec = [];
 		[SipConnRec] ->
-			StartTime = SipConnRec#sip_connection.start_time
+			% StartTime = SipConnRec#sip_connection.start_time,
+			OldConnRec = SipConnRec
 	end,
 	try simplesip_sip_util:decode_sip(Packet) of
 		SipRec when is_record(SipRec, sip_message) ->
-			simplesip_sip_wker:process_sip_req(SipRec, SocketRec),
-			NewSipConnRec = #sip_connection{
-			socket_rec = SocketRec,
-			start_time = StartTime,
-			last_update = Now
-			},
-			ets:insert(SipTab, NewSipConnRec)
+			simplesip_sip_wker:process_sip_req(SipTab, OldConnRec, SipRec, SocketRec)
+			% NewSipConnRec = #sip_connection{
+			% 	socket_rec = SocketRec,
+			% 	start_time = StartTime,
+			% 	last_update = Now
+			% },
+			% ets:insert(SipTab, NewSipConnRec)
 	catch
 		% _:_ ->
 		A:B ->
@@ -86,6 +89,8 @@ handle_rtp_msg(Packet, SocketRec) ->
 		ok ->
 			ok
 	catch
-		_:_ ->
-			ok
+		A:B ->
+		% _:_ ->
+			% ok
+			?info("ERROR~n~p : ~p", [A, B])
 	end.

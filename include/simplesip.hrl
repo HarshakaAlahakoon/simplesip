@@ -1,6 +1,8 @@
 -ifndef(SIMPLESIP_HRL).
 -define(SIMPLESIP_HRL, 1).
 
+-define(TELEPHONE_EVENT, <<101:7>>).	% rtpmap:101
+
 -define(info(Msg, Args), io:fwrite(
 	"~n~p::~p:: "++Msg++"~n", [?MODULE, ?LINE]++Args)).
 
@@ -161,7 +163,15 @@
 -type rtp_profile() :: #rtp_profile{}.
 
 -record(rtp_message, {
-		foo
+		version,
+		padding,
+		extension,
+		'CSRC_count',
+		marker,
+		payload_type,
+		sequence_number,
+		timestamp,
+		payload
 	}).
 
 -endif.

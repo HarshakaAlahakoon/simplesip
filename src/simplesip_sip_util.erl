@@ -283,7 +283,6 @@ extract_attribute(Str) ->
 get_compatible_audio(MediaList, AttribList) ->
 	%% TODO:: can this be passed from the udp_wker ??
 	{ok, SvrRtpList} = application:get_env(simplesip, rtpmaps),
-	% ?info("SvrRtpList : ~p", [SvrRtpList]),
 	Fun1 = fun(Attrib, AccIn1) ->
 		{AttribList1, FmtList} = AccIn1,
 		if
@@ -299,7 +298,6 @@ get_compatible_audio(MediaList, AttribList) ->
 									true ->
 										AccIn1;
 									false ->
-										?info("Attrib : ~p", [Attrib]),
 										{AttribList1++[Attrib], FmtList++[Rtp#rtpmap.fmt]}
 								end;
 							true ->
@@ -311,15 +309,13 @@ get_compatible_audio(MediaList, AttribList) ->
 		end
 	end,
 	Fun2 = fun(Media, AccIn2) ->
-		% ?info("Media : ~p", [Media]),
 		if
 			%% TODO:: reconsider the protocol check
-			(Media#media.media == audio) and (Media#media.protocol == "RTP/AVP")->
+			(Media#media.protocol == "RTP/AVP") and (Media#media.media == audio)->
 				{OldMediaList, OldAttrbList} = AccIn2,
 				{NewAttrbList, FmtList}= lists:foldl(Fun1, {OldAttrbList, []}, AttribList),
 				%% TODO:: what about a different port ??
-				% {ok, Port} = application:get_env(simplesip, rtp_port),
-				Port = 7000,
+				{ok, Port} = application:get_env(simplesip, rtp_port),
 				{OldMediaList ++ [Media#media{port = Port, fmt_list = FmtList}], NewAttrbList};
 			true ->
 				AccIn2

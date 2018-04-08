@@ -19,12 +19,13 @@ start_link() ->
 	gen_server:start_link({local, simplesip_udp_svr}, simplesip_udp_svr, [], []).
 
 init(Args) ->
+	io:fwrite("simplesip_udp_svr starting..."),
 	{ok, SipPort} = application:get_env(simplesip, sip_port),
 	{ok, RtpPort} = application:get_env(simplesip, rtp_port),
 	{ok, SipTab} = application:get_env(simplesip, sip_conn_tab),
 	{ok, RtpTab} = application:get_env(simplesip, rtp_conn_tab),
 	{ok, SipSocket} = gen_udp:open(SipPort, [binary, {active,true}, {reuseaddr, true}]),
-	{ok, RtpSocket} = gen_udp:open(RtpPort, [binary, {active,true}, {reuseaddr, true}]),
+	{ok, RtpSocket} = gen_udp:open(RtpPort, [binary, {active,true}, {reuseaddr, false}]),
 	RTCP_Port = simplesip_rtp_util:get_matching_rtcp_port(RtpPort),
 	{ok, RTCP_Socket} = gen_udp:open(RTCP_Port, [binary, {active,true}, {reuseaddr, true}]),
 	case ets:info(SipTab) of
@@ -66,6 +67,9 @@ init(Args) ->
 % 	io:fwrite("~n~p:: Opening a UDP socket for port ~p~n", [?MODULE, State#state.listen_port]),
 % 	{ok, AcceptedSocket} = gen_udp:open(State#state.listen_port, [binary, {active,true}, {reuseaddr, true}]),
 % 	{noreply, State};
+handle_cast(show_state, State) ->
+	?info("State : ~p", [State]),
+	{noreply, State};
 handle_cast(Request, State) ->
 	{noreply, State}.
 
@@ -73,6 +77,7 @@ handle_call(Request, From, State) ->
 	{noreply, State}.
 
 handle_info({udp, Socket, IP, InPortNo, Packet} = Msg, State) ->
+	% ?info("Packet received : Socket : ~p", [Socket]),
 	ClientAddr = #client_addr{ip = IP, in_port_no = InPortNo},
 	SocketRec =  #socket_rec{
 		client_addr = ClientAddr,
@@ -80,11 +85,16 @@ handle_info({udp, Socket, IP, InPortNo, Packet} = Msg, State) ->
 	},
 	if
 		Socket == State#state.sip_socket ->
-			% ?info("~p", [Packet]),
 			proc_lib:spawn(simplesip_udp_wker, handle_sip_req, [Packet, SocketRec, State#state.sip_conn_tab]);
 		Socket == State#state.rtp_socket ->
+			% ?info("RTP Packet", []),
 			proc_lib:spawn(simplesip_udp_wker, handle_rtp_msg, [Packet, SocketRec]);
+		Socket == State#state.rtcp_socket ->
+			% TODO: Process RTCP Packet
+			?info("RTCP Packet", []);
 		true ->
+			?info("Unknown Packet received : Socket : ~p", [Socket]),
+			?info("Unknown Packet : ~p", [Packet]),
 			ok
 	end,
 
