@@ -10,6 +10,7 @@ Welcome to Simplesip! The Readme and Wiki is still not initiated.
 
 2. Then, start an Erlang shell in ebin:
    > cd ebin/
+   
    > erl -sname simplesip -setcookie test
    
 3. In Erlang shell run:
