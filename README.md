@@ -3,7 +3,7 @@ A simple Erlang SIP/IVR server
 
 Welcome to Simplesip! The Readme and Wiki is still not initiated.
 
-===================================================================================================================================
+==================================================================================================
 
 1. Compile : After cloning, open terminal in the project folder:
    > erlc -I include/ -o ebin/ src/*.erl
