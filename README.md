@@ -7,7 +7,8 @@ Simplesip is a simple IVR server, and it is developed for educational purpose. B
 ## How it works
 The application starts the main supervisor `simplesip_sup`. Under this supervisor it starts:
  - `simplesip_tcp_wker_sup`
-a child supervisor , and `simplesip_tcp_svr`,  
+ * `simplesip_tcp_svr`
+a child supervisor , and ,  
 
 
 ## How to run
