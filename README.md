@@ -4,6 +4,12 @@
 Simplesip is a simple IVR server, and it is developed for educational purpose. But, this application can be extended further to use in industrial level. No performence/load tests have been done for this application and still in active development.
 
 
+## How it works
+The application starts the main supervisor `simplesip_sup`. Under this supervisor it starts:
+ - `simplesip_tcp_wker_sup`
+a child supervisor , and `simplesip_tcp_svr`,  
+
+
 ## How to run
 1. After cloning, open terminal in the project folder:
 
