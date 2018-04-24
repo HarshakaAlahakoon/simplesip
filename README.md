@@ -12,9 +12,12 @@ The application starts the main supervisor `simplesip_sup`. Under this superviso
  * `simplesip_udp_svr`
  
  Here `simplesip_udp_svr` waits for a TCP connetion and accept it. Then it starts a `simplesip_tcp_wker` under
- `simplesip_tcp_wker_sup` handle the connection further.
+ `simplesip_tcp_wker_sup` (a `gwn_server`) to handle that connection further.
  
  Both TCP and UDP can be used for SIP protocol. But currently UDP is used for development.
+ 
+ As UDP is a stateless protocol, no dedicated `gen_server`s are required to handle connections. Instead, `simplesip_udp_svr`
+ receives UDP packet and spawn a worker process `simplesip_udp_wker` and hand-over the packet to that process.
 
 
 ## How to run
