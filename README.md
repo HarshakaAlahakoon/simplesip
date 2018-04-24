@@ -1,7 +1,8 @@
 # Welcome to Simplesip!
 
 ## Introduction
-Simplesip is a simple IVR server, and it is developed for educational purpose. But, this application can be extended further to use in industrial level. No performence/load tests have been done for this application and still in active development.
+Simplesip is a simple IVR server written mainly in **Erlang**, and it is developed for educational purpose. No external 
+libraries are used. But, this application can be extended further to use in industrial level. No performence/load tests have been done for this application and still in active development.
 
 This application has been developed to use both TCP and UDP for SIP protocol. But currently UDP is used for development.
 TCP support is developed to a certain extent.
@@ -26,8 +27,10 @@ The application starts the main supervisor `simplesip_sup`. Under this superviso
  relevent model, i.e. `simplesip_sip_wker`.
  
  Most of the specialized functions are grouped together in a same module. For an example, functions for encoding/decoding SIP 
- packets are in `simplesip_sip_util`
-
+ packets are in `simplesip_sip_util`.
+ 
+ In order to minimize the media file processing time, a **C** library `wav_stream` is written and used through Erlang ports.
+ https://github.com/HarshakaAlahakoon/wav_stream
 
 ## How to run
 1. After cloning, open terminal in the project folder:
