@@ -17,8 +17,8 @@ Simplesip is a simple IVR server, and it is developed for educational purpose. B
    
 3. In Erlang shell, run:
 
-  `application:start(sasl).`
+   `application:start(sasl).`
   
-  `application:load("simplesip.app").`
+   `application:load("simplesip.app").`
   
-  `application:start(simplesip).`
+   `application:start(simplesip).`
