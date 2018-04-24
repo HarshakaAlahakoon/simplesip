@@ -1,8 +1,6 @@
-# Simplesip
-A simple Erlang SIP/IVR server
-
 Welcome to Simplesip!
 ============================================================
+# Introduction
 Simplesip is a simple IVR server, and it is developed for educational purpose. But, this application can be extended further to use in industrial level. No performence/load tests have been done for this application and still in active development.
 
 ======================================================================================
