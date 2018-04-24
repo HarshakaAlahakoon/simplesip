@@ -2,7 +2,7 @@
 
 ## Introduction
 Simplesip is a simple IVR server written mainly in **Erlang**, and it is developed for educational purpose. No external 
-libraries are used. But, this application can be extended further to use in industrial level. No performence/load tests have been done for this application and still in active development.
+libraries are used. But, this application can be extended further to use in industrial level. No performence/load tests have been done for this application and **still in active development**.
 
 This application has been developed to use both TCP and UDP for SIP protocol. But currently UDP is used for development.
 TCP support is developed to a certain extent.
