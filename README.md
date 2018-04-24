@@ -50,3 +50,8 @@ The application starts the main supervisor `simplesip_sup`. Under this superviso
    `application:load("simplesip.app").`
   
    `application:start(simplesip).`
+   
+
+## Note
+
+Please note that this application is still under development.
