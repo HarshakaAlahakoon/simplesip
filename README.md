@@ -6,10 +6,15 @@ Simplesip is a simple IVR server, and it is developed for educational purpose. B
 
 ## How it works
 The application starts the main supervisor `simplesip_sup`. Under this supervisor it starts:
- * `simplesip_tcp_wker_sup`, a child supervisor to handle TCP request
+ * `simplesip_tcp_wker_sup`,
  * `simplesip_rtp_streamer`
  * `simplesip_tcp_svr`
  * `simplesip_udp_svr`
+ 
+ Here `simplesip_udp_svr` waits for a TCP connetion and accept it. Then it starts a `simplesip_tcp_wker` under
+ `simplesip_tcp_wker_sup` handle the connection further.
+ 
+ Both TCP and UDP can be used for SIP protocol. But currently UDP is used for development.
 
 
 ## How to run
