@@ -5,11 +5,11 @@ Simplesip is a simple IVR server, and it is developed for educational purpose. B
 
 
 ## How to run
-1. Compile : After cloning, open terminal in the project folder:
+1. After cloning, open terminal in the project folder:
 
    `erlc -I include/ -o ebin/ src/*.erl`
 
-2. Then, start an Erlang shell in ebin by issuing following commands in terminal:
+2. Start an Erlang shell in ebin by issuing following commands in the same terminal:
 
    `cd ebin/`
    
