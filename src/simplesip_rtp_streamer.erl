@@ -4,17 +4,19 @@
 
 -include("simplesip.hrl").
 
--record(state, {c_bin_dir, c_port}).
+-record(state, {c_bin_location, c_port}).
 
 start_link() ->
 	gen_server:start_link({local, simplesip_rtp_streamer}, simplesip_rtp_streamer, [], []).
 
 init(Args) ->
 	process_flag(trap_exit, true),
-	{ok, Cbin} = application:get_env(simplesip, c_bin_dir),
-	CProgBinFile = Cbin ++ "/wav_stream",
+	PrivDir = code:priv_dir(simplesip),
+	{ok, Cbin} = application:get_env(simplesip, c_bin_location),
+	% CProgBinFile = Cbin ++ "/wav_stream",
+	CProgBinFile = filename:join(PrivDir, Cbin),
 	Port = erlang:open_port({spawn, CProgBinFile}, [{packet, 2}]),
-	{ok, #state{c_bin_dir = Cbin, c_port = Port}}.
+	{ok, #state{c_bin_location = Cbin, c_port = Port}}.
 
 handle_cast(send_wav, State) ->
 	[RtpConnRec | _] = ets:tab2list(rtp_connections),

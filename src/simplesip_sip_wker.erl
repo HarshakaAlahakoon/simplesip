@@ -264,10 +264,13 @@ registered(SipRec, SocketRec) ->
 		0 ->
 			Contact = SipRec#sip_message.contact ++ "\r\n";
 		Index ->
-			[_, ContactData] = string:tokens(SipRec#sip_message.contact, " "),
-			[SipUri | Rest] = string:tokens(ContactData, ";"),
-			Gruu = create_gruu(SipUri, Rest),
-			Contact = "Contact: " ++ SipUri ++ ";" ++ Gruu ++ "expires=3600\r\n",
+			% [_, ContactData] = string:tokens(SipRec#sip_message.contact, " "),
+			% [SipUri | Rest] = string:tokens(ContactData, ";"),
+			ContactRec = simplesip_sip_util:extract_contact_header(SipRec#sip_message.contact),
+			% Gruu = create_gruu(SipUri, Rest),
+			% Gruu = create_gruu(ContactURI, Rest),
+			Gruu = simplesip_sip_util:create_gruu(ContactRec),
+			Contact = "Contact: " ++ ContactRec#contact_header.contact_uri ++ ";" ++ Gruu ++ "expires=3600\r\n",
 			?info("Contact : ~p", [Contact])
 	end,
 	%% -------------------------------
@@ -385,24 +388,24 @@ concat_attributes(Line, [Attrib | Rest]) ->
 			end
 	end.
 
-create_gruu(SipUri, Rest) ->
-	%% TODO:: make use of "reg-id"
-	[SipUri1] = string:tokens(SipUri, "<>"),
-	[_, Realm] = string:tokens(SipUri1, "@"),
-	Fun = fun(A, Acc) ->
-		case string:str(A, "+sip.instance=") of
-			0 ->
-				Acc;
-			Index ->
-				[A]
-		end
-	end,
-	[SipInstance] = lists:foldl(Fun, [], Rest),
-	[_, UrnUuid, _] = string:tokens(SipInstance, "<>"),
-	PubGruu = lists:concat(["pub-gruu=\"", SipUri1, ";", "gr=", UrnUuid, "\";"]),
-	%% TODO:: how to create "temp-gruu" ??
-	TempGruu = lists:concat(["temp-gruu=\"sip:tgruu.", random:uniform(100000000), "@", Realm, ";gr\";"]),
-	PubGruu ++ TempGruu ++ SipInstance ++ ";".
+% create_gruu(SipUri, Rest) ->
+% 	%% TODO:: make use of "reg-id"
+% 	[SipUri1] = string:tokens(SipUri, "<>"),
+% 	[_, Realm] = string:tokens(SipUri1, "@"),
+% 	Fun = fun(A, Acc) ->
+% 		case string:str(A, "+sip.instance=") of
+% 			0 ->
+% 				Acc;
+% 			Index ->
+% 				[A]
+% 		end
+% 	end,
+% 	[SipInstance] = lists:foldl(Fun, [], Rest),
+% 	[_, UrnUuid, _] = string:tokens(SipInstance, "<>"),
+% 	PubGruu = lists:concat(["pub-gruu=\"", SipUri1, ";", "gr=", UrnUuid, "\";"]),
+% 	%% TODO:: how to create "temp-gruu" ??
+% 	TempGruu = lists:concat(["temp-gruu=\"sip:tgruu.", random:uniform(100000000), "@", Realm, ";gr\";"]),
+% 	PubGruu ++ TempGruu ++ SipInstance ++ ";".
 
 send(Data, SocketRec) ->
 	gen_udp:send(SocketRec#socket_rec.socket, (SocketRec#socket_rec.client_addr)#client_addr.ip, (SocketRec#socket_rec.client_addr)#client_addr.in_port_no, Data).

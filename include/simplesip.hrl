@@ -66,6 +66,12 @@
   	sdp_message
 	}).
 
+-record(contact_header, {
+	contact_uri,
+	sip_instance,
+	other_attributes
+	}).
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%			SDP protocol		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% TODO:: redefine this record
 -record(sdp_message, {

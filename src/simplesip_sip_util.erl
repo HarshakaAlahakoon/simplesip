@@ -145,6 +145,17 @@ extract_header(SipRec, [Line | Rest]) ->
     	extract_header(NewSipRec, Rest)
 	end.
 
+extract_contact_header(Data) ->
+	Data1 = string:find(Data, "<sip:", leading),
+	[Data2 | _] = string:split(Data1, ">"),
+	Data3 = string:trim(Data2, leading, "<"),
+	[ContactURI, OtherAttr] = string:split(Data3, ";"),
+	SipInstance = string:find(Data, "+sip.instance=", leading),
+	[SipInstance1 | _] = string:tokens(SipInstance, ">"),
+	[_, SipInstance2] = string:split(SipInstance1, "+sip.instance"),
+	SipInstance3 = string:trim(SipInstance2, leading, " =\"<"),
+	#contact_header{contact_uri = ContactURI, sip_instance = SipInstance3, other_attributes = OtherAttr}.
+
 extract_sdp(SdpRec, []) ->
 	SdpRec;
 extract_sdp(SdpRec, [Line | Rest]) ->
@@ -323,6 +334,17 @@ get_compatible_audio(MediaList, AttribList) ->
 	end,
 	lists:foldl(Fun2, {[], []}, MediaList).
 %% ----------------------------------------------------------------------------------
+
+create_gruu(Contact) ->
+	%% TODO:: make use of "reg-id"
+	[_, _, Realm, _] = string:tokens(Contact#contact_header.contact_uri, "@:;"),
+	UrnUuid = Contact#contact_header.sip_instance,
+	PubGruu = lists:concat(["pub-gruu=\"", Contact#contact_header.contact_uri, ";", "gr=", UrnUuid, "\";"]),
+	%% TODO:: how to create "temp-gruu" ??
+	TempGruu = lists:concat(["temp-gruu=\"sip:tgruu.", random:uniform(100000000), "@", Realm, ";gr\";"]),
+	PubGruu ++ TempGruu ++ Contact#contact_header.sip_instance ++ ";".
+%% ----------------------------------------------------------------------------------
+
 string_to_atom(Str) ->
 	try erlang:list_to_existing_atom(Str) of
 		Atom ->
