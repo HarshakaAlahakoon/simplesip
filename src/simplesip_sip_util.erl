@@ -292,47 +292,104 @@ extract_attribute(Str) ->
 	end.
 
 get_compatible_audio(MediaList, AttribList) ->
+	get_compatible_audio(MediaList, AttribList, {[], []}).
+
+get_compatible_audio([], _AttribList, {MediaList, AttribList}) -> MediaList1 = lists:reverse(MediaList),
+	AttribList1 = lists:reverse(AttribList),
+	{MediaList1, AttribList1};
+get_compatible_audio([Media | Rest], AttribList, Acc) ->
+	Acc1 = get_compatible_audio(Media, AttribList, Acc),
+	get_compatible_audio(Rest, AttribList, Acc1);
+get_compatible_audio(Media, AttribList, Acc) when is_record(Media, media) ->
 	%% TODO:: can this be passed from the udp_wker ??
 	{ok, SvrRtpList} = application:get_env(simplesip, rtpmaps),
-	Fun1 = fun(Attrib, AccIn1) ->
-		{AttribList1, FmtList} = AccIn1,
-		if
-			Attrib#attribute.attribute == rtpmap ->
-				Rtp = Attrib#attribute.value,
-				case lists:keyfind(Rtp#rtpmap.fmt, 2, SvrRtpList) of
-					false ->
-						AccIn1;
-					SvrRtp ->
-						if
-							SvrRtp#rtpmap.clock_rate ==  Rtp#rtpmap.clock_rate ->
-								case lists:member(Attrib, AttribList1) of
-									true ->
-										AccIn1;
-									false ->
-										{AttribList1++[Attrib], FmtList++[Rtp#rtpmap.fmt]}
-								end;
-							true ->
-								AccIn1
-						end
-				end;
-			true ->
-				AccIn1
-		end
-	end,
-	Fun2 = fun(Media, AccIn2) ->
-		if
-			%% TODO:: reconsider the protocol check
-			(Media#media.protocol == "RTP/AVP") and (Media#media.media == audio)->
-				{OldMediaList, OldAttrbList} = AccIn2,
-				{NewAttrbList, FmtList}= lists:foldl(Fun1, {OldAttrbList, []}, AttribList),
-				%% TODO:: what about a different port ??
-				{ok, Port} = application:get_env(simplesip, rtp_port),
-				{OldMediaList ++ [Media#media{port = Port, fmt_list = FmtList}], NewAttrbList};
-			true ->
-				AccIn2
-		end
-	end,
-	lists:foldl(Fun2, {[], []}, MediaList).
+	if
+		%% TODO:: reconsider the protocol check
+		(Media#media.protocol == "RTP/AVP") and (Media#media.media == audio) ->
+			{ok, {PayloadList, NewAttribList}} = match_sdp_payload_type(Media#media.fmt_list, AttribList, SvrRtpList),
+			%% TODO:: what about a different port ??
+			{ok, Port} = application:get_env(simplesip, rtp_port),
+			{OldMediaList, OldRtpAttribList} = Acc,
+			{[Media#media{port = Port, fmt_list = PayloadList} | OldMediaList], lists:append(NewAttribList, OldRtpAttribList)};
+		true ->
+			Acc
+	end;
+get_compatible_audio(_Media, _AttribList, Acc) ->
+	Acc.
+
+match_sdp_payload_type(ClientPayloadList, ClientAttrs, SvrRtpList) ->
+	match_sdp_payload_type(ClientPayloadList, ClientAttrs, SvrRtpList, {[], []}).
+
+match_sdp_payload_type([], _ClientAttrs, _SvrRtpList, Acc) ->
+	{ok, Acc};
+match_sdp_payload_type([PayloadType | Rest], ClientAttrs, SvrRtpList, Acc) ->
+	Acc1 = match_sdp_payload_type(PayloadType, ClientAttrs, SvrRtpList, Acc),
+	match_sdp_payload_type(Rest, ClientAttrs, SvrRtpList, Acc1);
+match_sdp_payload_type(PayloadType, ClientAttrs, SvrRtpList, {PayloadList, AttribList} = Acc) when is_integer(PayloadType) ->
+	case lists:keyfind(PayloadType, 2, SvrRtpList) of
+		false ->
+			Acc;
+		_Rtp ->
+			case is_dynamic_payload(PayloadType) of
+				true ->
+					%% TODO:: Check for matching RTP attribute.
+					case match_rtpmap_attribute(PayloadType, ClientAttrs, SvrRtpList) of
+						{ok, Attrib} ->
+							PayloadList1 = [PayloadType | PayloadList],
+							AttribList1 = [Attrib | AttribList],
+							{PayloadList1, AttribList1};
+						_ ->
+							Acc
+					end;
+				false ->
+					PayloadList1 = [PayloadType | PayloadList],
+					{PayloadList1, AttribList}
+			end
+	end;
+match_sdp_payload_type(_PayloadType, _ClientAttrs, _SvrMediaList, Acc) ->
+	%% TODO:: Handle error here.
+	Acc.
+
+match_rtpmap_attribute(_Format, [], _SvrMediaAttrs) ->
+	false;
+match_rtpmap_attribute(Format, [Attrib | Rest], SvrMediaAttrs) ->
+	case match_rtpmap_attribute(Format, Attrib, SvrMediaAttrs) of
+		{ok, _} ->
+			%% This condition will not hit.
+			{ok, Attrib};
+		_ ->
+			match_rtpmap_attribute(Format, Rest, SvrMediaAttrs)
+	end;
+match_rtpmap_attribute(Format, #attribute{attribute = rtpmap, value = #rtpmap{fmt = Format}} = Attrib, SvrMediaAttrs) ->
+	if Attrib#attribute.attribute == rtpmap ->
+		Rtp = Attrib#attribute.value,
+		case lists:keyfind(Rtp#rtpmap.fmt, 2, SvrMediaAttrs) of
+			false ->
+				false;
+			SvrRtp ->
+				if
+					SvrRtp#rtpmap.clock_rate ==  Rtp#rtpmap.clock_rate ->
+						{ok, Attrib};
+					true ->
+						false	
+				end
+		end;
+	true ->
+		false	
+	end;
+match_rtpmap_attribute(_Format, _AttribList, _SvrMediaAttrs) ->
+	%% TODO:: Handle error here.
+	false.
+
+is_dynamic_payload(PayloadType) ->
+	%% TODO:: Read from an ETS table.
+	case PayloadType of
+		8 ->
+			false;
+		_ ->
+			true
+	end.
+
 %% ----------------------------------------------------------------------------------
 
 create_gruu(Contact) ->

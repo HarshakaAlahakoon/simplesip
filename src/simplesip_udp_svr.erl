@@ -77,7 +77,6 @@ handle_call(Request, From, State) ->
 	{noreply, State}.
 
 handle_info({udp, Socket, IP, InPortNo, Packet} = Msg, State) ->
-	?info("Packet received : Socket : ~p", [Socket]),
 	ClientAddr = #client_addr{ip = IP, in_port_no = InPortNo},
 	SocketRec =  #socket_rec{
 		client_addr = ClientAddr,

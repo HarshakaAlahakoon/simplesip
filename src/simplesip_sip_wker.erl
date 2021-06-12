@@ -320,7 +320,7 @@ cancel(SipRec) ->
 sdp_res(SipRec, SocketRec) ->
 	SdpMsg = SipRec#sip_message.sdp_message,
 	V = "v=0\r\n",	% v,  	%
-	[_, Called, _, _] = string:tokens(SipRec#sip_message.to, ":@"),
+	% [_, Called, _, _] = string:tokens(SipRec#sip_message.to, ":@"),
 	SessId = (SdpMsg#sdp_message.o)#sdp_origin.session_id + 1,
 	O = lists:concat(["o=", simplesip, " ", SessId, " ", SessId+1, " IN IP4 ", simplesip_sip_util:local_ip_v4_str(), "\r\n"]),		% o,  	%
 	S = "s=-\r\n",		% s,  	%
@@ -335,6 +335,8 @@ sdp_res(SipRec, SocketRec) ->
 	T = "t=0 0\r\n",	% t = []
 	% r = []
 	{MediaList, AttribList} = simplesip_sip_util:get_compatible_audio(SdpMsg#sdp_message.m, SdpMsg#sdp_message.a),
+	?info("Compatible media list: ~p~n", [MediaList]),
+	?info("Compatible attrib list: ~p~n", [AttribList]),
 	M = concat_media(MediaList),
 	Fmtp = "a=fmtp:101 0-15\r\n",
 	Ptime = 20,
@@ -358,7 +360,6 @@ sdp_res(SipRec, SocketRec) ->
 
 concat_media(MediaList) ->
 	Fun1 = fun(MediaRec, Acc) ->
-		La = MediaRec#media.fmt_list,
 		Spaces = lists:duplicate(length(MediaRec#media.fmt_list), " "),
 		L = lists:zipwith(fun(X,Y)-> lists:concat([X, Y]) end, Spaces, MediaRec#media.fmt_list),
 		FmtList = lists:concat(L),
@@ -387,25 +388,6 @@ concat_attributes(Line, [Attrib | Rest]) ->
 					concat_attributes(Line, Rest)
 			end
 	end.
-
-% create_gruu(SipUri, Rest) ->
-% 	%% TODO:: make use of "reg-id"
-% 	[SipUri1] = string:tokens(SipUri, "<>"),
-% 	[_, Realm] = string:tokens(SipUri1, "@"),
-% 	Fun = fun(A, Acc) ->
-% 		case string:str(A, "+sip.instance=") of
-% 			0 ->
-% 				Acc;
-% 			Index ->
-% 				[A]
-% 		end
-% 	end,
-% 	[SipInstance] = lists:foldl(Fun, [], Rest),
-% 	[_, UrnUuid, _] = string:tokens(SipInstance, "<>"),
-% 	PubGruu = lists:concat(["pub-gruu=\"", SipUri1, ";", "gr=", UrnUuid, "\";"]),
-% 	%% TODO:: how to create "temp-gruu" ??
-% 	TempGruu = lists:concat(["temp-gruu=\"sip:tgruu.", random:uniform(100000000), "@", Realm, ";gr\";"]),
-% 	PubGruu ++ TempGruu ++ SipInstance ++ ";".
 
 send(Data, SocketRec) ->
 	gen_udp:send(SocketRec#socket_rec.socket, (SocketRec#socket_rec.client_addr)#client_addr.ip, (SocketRec#socket_rec.client_addr)#client_addr.in_port_no, Data).

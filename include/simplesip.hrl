@@ -96,7 +96,7 @@
 	media,				% media type
 	port,				% transport port to which the media stream is sent
 	protocol,			% transport protocol
-	fmt_list = []		% media format descriptions
+	fmt_list = []			% media format descriptions
 	}).
 -type media() :: #media{}.
 
