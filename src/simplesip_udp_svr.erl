@@ -19,13 +19,14 @@ start_link() ->
 	gen_server:start_link({local, simplesip_udp_svr}, simplesip_udp_svr, [], []).
 
 init(Args) ->
-	io:fwrite("simplesip_udp_svr starting..."),
+	io:fwrite("simplesip_udp_svr starting...~n~n"),
+	{ok, SipIp} = application:get_env(simplesip, sip_ip),
 	{ok, SipPort} = application:get_env(simplesip, sip_port),
 	{ok, RtpPort} = application:get_env(simplesip, rtp_port),
 	{ok, SipTab} = application:get_env(simplesip, sip_conn_tab),
 	{ok, RtpTab} = application:get_env(simplesip, rtp_conn_tab),
-	{ok, SipSocket} = gen_udp:open(SipPort, [binary, {active,true}, {reuseaddr, true}]),
-	{ok, RtpSocket} = gen_udp:open(RtpPort, [binary, {active,true}, {reuseaddr, false}]),
+	{ok, SipSocket} = gen_udp:open(SipPort, [binary, {active,true}, {reuseaddr, true}, {ip, SipIp}]),
+	{ok, RtpSocket} = gen_udp:open(RtpPort, [binary, {active,true}, {reuseaddr, false}, {ip, SipIp}]),
 	RTCP_Port = simplesip_rtp_util:get_matching_rtcp_port(RtpPort),
 	{ok, RTCP_Socket} = gen_udp:open(RTCP_Port, [binary, {active,true}, {reuseaddr, true}]),
 	case ets:info(SipTab) of

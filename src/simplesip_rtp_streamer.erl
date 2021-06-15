@@ -19,6 +19,7 @@ init(Args) ->
 	{ok, #state{c_bin_location = Cbin, c_port = Port}}.
 
 handle_cast(send_wav, State) ->
+	?info("RTP Streamer: send_wav", []),
 	[RtpConnRec | _] = ets:tab2list(rtp_connections),
 	#media{port = Port} = RtpConnRec#rtp_connection.active_media,
 	{A, B, C, D} = RtpConnRec#rtp_connection.connection_address,
@@ -42,8 +43,14 @@ handle_cast(Request, State) ->
 handle_call(Request, From, State) ->
 	{noreply, State}.
 
+handle_info({'EXIT', Port, Reason}, State) ->
+	?info("C PORT EXIT. ~nPort: ~p~nReason: ~p~n", [Port, Reason]),
+    	{noreply, State};
+handle_info({_Port, {data, Data}} = _Msg, State) ->
+	?info("Data message from C PORT: ~p~n", [Data]),
+    	{noreply, State};
 handle_info(Msg, State) ->
-	?info("received : ~p", [Msg]),
+	?info("Message from C PORT: ~p~n", [Msg]),
     {noreply, State}.
 
 code_change(OldVsn, State, Extra) ->

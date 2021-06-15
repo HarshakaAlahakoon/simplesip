@@ -42,15 +42,18 @@ encode_rtp(PayLoad, SSRC_Int, SeqNumInt, IsMarker, Time) ->
 		false ->
 			Marker = <<0:1>>
 	end,
-	PayLoadTypeInt = 0,	%% PCMU
+	% PayLoadTypeInt = 0,	%% PCMU
+	PayLoadTypeInt = 8,	%% PCMU
 	PayLoadType = <<PayLoadTypeInt:7>>,
 	H2 = <<Marker/bits, PayLoadType/bits>>,
 	% Time = calendar:datetime_to_gregorian_seconds(calendar:local_time()),
-	TimeStamp = <<Time:32>>,
+	% TimeStamp = <<Time:32>>,
+	TimeStamp = <<Time:32/big>>,
 	%% TODO:: device a method for SSRC
 	SSRC = <<SSRC_Int:32>>,
 	%% TODO:: SeqNum should be incremented
-	SeqNum = <<SeqNumInt:16>>,
+	% SeqNum = <<SeqNumInt:16>>,
+	SeqNum = <<SeqNumInt:16/big>>,
 	Rest1 = <<TimeStamp/binary, SSRC/binary, PayLoad/binary>>,
 	<<H1/binary, H2/binary, SeqNum/binary, Rest1/binary>>.
 
@@ -91,10 +94,10 @@ rtcp_source_description(SSRC_Int) ->
 	ChunkLength = erlang:bit_size(Chunk_1) div 32,
 	Length = <<(ChunkLength + 1):16>>,
 	H1 = <<Version/bits, Padding_Bit/bits, SourceCount/bits,PacketType/bits, Length/bits>>,
-	?info("H1 bits : ~p", [erlang:bit_size(H1)]),
-	?info("SSRC bits : ~p", [erlang:bit_size(SSRC)]),
-	?info("Usr_and_Domain bits : ~p", [erlang:bit_size(Usr_and_Domain)]),
-	?info("Chunk bits : ~p", [erlang:bit_size(Chunk_1)]),
+	% ?info("H1 bits : ~p", [erlang:bit_size(H1)]),
+	% ?info("SSRC bits : ~p", [erlang:bit_size(SSRC)]),
+	% ?info("Usr_and_Domain bits : ~p", [erlang:bit_size(Usr_and_Domain)]),
+	% ?info("Chunk bits : ~p", [erlang:bit_size(Chunk_1)]),
 	<<H1/binary, SSRC/binary, Chunk_1/binary>>.
 
 send_rtcp_start() ->
@@ -109,15 +112,20 @@ send_rtcp_start() ->
 	send(RtcpSocket, IP, get_matching_rtcp_port(EndPort), RtcpData).
 
 send_wav() ->
+	?info("Reading audio file", []),
 	[RtpConnRec | _] = ets:tab2list(rtp_connections),
-	% {_, _, _, Data} = wave:read("/home/aryan/Desktop/tmp/jeena_uLaw.wav"),
 	% {_, _, _, Data} = wave:read("/home/aryan/Desktop/tmp/test.wav"),
-	{ok, Data} = file:read_file("/home/aryan/Desktop/tmp/test.wav"),
-	% {ok, Data} = file:read_file("/home/aryan/Desktop/tmp/jeena_uLaw.wav"),
+	% {ok, Data} = file:read_file("/home/aryan/Desktop/tmp/test.wav"),
+	PrivDir = code:priv_dir(simplesip),
+	{ok, PlaybackFile} = application:get_env(simplesip, playback_file),
+	File = filename:join([PrivDir, "playback", PlaybackFile]),
+	{ok, Data} = file:read_file(File),
 	% ?info("Data : ~p", [Data]),
 	[#port_rec{protocol = rtp, socket = RtpSocket}] = ets:lookup(ports, rtp),
 	% send_wav(RtpConnRec, RtpSocket, 123456, 0, true, <<Data/binary>>).
-	Time = calendar:datetime_to_gregorian_seconds(calendar:local_time()),
+	% Time = calendar:datetime_to_gregorian_seconds(calendar:local_time()),
+	Time = 0,
+	?info("Starting RTP stream", []),
 	send_wav(RtpConnRec, RtpSocket, 123456, 0, true, Time, Data).
 send_wav(_, _, _, _, _, _, <<>>) ->
 	ok;

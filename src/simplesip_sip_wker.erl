@@ -53,15 +53,19 @@ process_sip_req(SipTab, OldConnRec, SipRec, SocketRec) ->
 		method ->
 			case SipRec#sip_message.method of
 				register ->
+					?info("Received messege: REGISTER", []),
 					case is_authorized(SocketRec, SipRec) of
 						true ->
 							% send(trying(SipRec), SocketRec),
 							% timer:sleep(1000),
-							send(registered(SipRec, SocketRec), SocketRec);
+							send(registered(SipRec, SocketRec), SocketRec),
+							?info("Sent messege: REGISTERED", []);
 						false ->
-							send(unauthorized(SipRec), SocketRec)
+							send(unauthorized(SipRec), SocketRec),
+							?info("Sent messege: UNAUTHORIZED", [])
 					end;
 				invite ->
+					?info("Received messege: INVITE", []),
 					% case is_authorized(SocketRec, SipRec) of
 					% 	true ->
 					% 		send(trying(SipRec), SocketRec),
@@ -107,12 +111,15 @@ process_sip_req(SipTab, OldConnRec, SipRec, SocketRec) ->
 							},
 							ets:insert(SipTab, NewSipConnRec),
 							send(ringing(SipRec), SocketRec),
+							?info("Sent messege: RINGING", []),
 							OK = ok_sdp(SipRec, SocketRec),
 							simplesip_rtp_util:send_rtcp_start(),
 							timer:sleep(2000),
 							send(OK, SocketRec),
+							?info("Sent messege: OK", []),
 							timer:sleep(1000),
-							gen_server:cast(simplesip_rtp_streamer, send_wav);
+							% gen_server:cast(simplesip_rtp_streamer, send_wav);
+							simplesip_rtp_util:send_wav();
 						true ->
 							NewSipConnRec = #sip_connection{
 								socket_rec = SocketRec,
@@ -127,10 +134,17 @@ process_sip_req(SipTab, OldConnRec, SipRec, SocketRec) ->
 							timer:sleep(2000),
 							send(OK, SocketRec),
 							timer:sleep(1000),
-							gen_server:cast(simplesip_rtp_streamer, send_wav)
+							% gen_server:cast(simplesip_rtp_streamer, send_wav)
+							simplesip_rtp_util:send_wav()
 					end;
+				ack ->
+					?info("Received messege: ACK", []),
+					% Do the thing here
+					ok;
 				bye ->
+					?info("Received messege: BYE", []),
 					send(ok(SipRec), SocketRec),
+					?info("Sent messege: OK", []),
 					NewSipConnRec = #sip_connection{
 						socket_rec = SocketRec,
 						start_time = OldConnRec#sip_connection.start_time,
@@ -138,6 +152,7 @@ process_sip_req(SipTab, OldConnRec, SipRec, SocketRec) ->
 					},
 					ets:insert(SipTab, NewSipConnRec);
 				cancel ->
+					?info("Received messege: CANCEL", []),
 					send(cancel(SipRec), SocketRec);
 				_ ->
 					error
@@ -147,11 +162,11 @@ process_sip_req(SipTab, OldConnRec, SipRec, SocketRec) ->
 	end.
 
 trying(SipRec) ->
-	?info("Trying...", []),
+	?info("Composing messege: TRYING", []),
 	%% TODO:: sip version ??
 	Status = "SIP/2.0 100 Trying\r\n",
 	% Via = SipRec#sip_message.via ++ ";received=" ++ simplesip_sip_util:local_ip_v4_str() ++ "\r\n",
-	Via = SipRec#sip_message.via ++ "\r\n",
+	Via = concat_via_values(SipRec#sip_message.via) ++ "\r\n",
 	%% TODO:: what is tag and how to create it?
 	% Tag = "37GkEhwl6",
 	From = "From: " ++ SipRec#sip_message.from++ "\r\n",
@@ -163,10 +178,10 @@ trying(SipRec) ->
 	Status++Via++From++To++CallId++CSeq	++ContentLen++"\r\n".
 
 ringing(SipRec) ->
-	?info("Ringing...", []),
+	?info("Composing message: RINGING ", []),
 	%% TODO:: sip version ??
 	Status = "SIP/2.0 180 Ringing\r\n",
-	Via = SipRec#sip_message.via ++ ";received=" ++ simplesip_sip_util:local_ip_v4_str() ++ "\r\n",
+	Via = concat_via_values(SipRec#sip_message.via) ++ ";received=" ++ simplesip_sip_util:local_ip_v4_str() ++ "\r\n",
 	%% TODO:: what is tag and how to create it?
 	Tag = "37GkEhwl6",
 	From = "From: " ++ SipRec#sip_message.from ++ ";tag=" ++ Tag ++ "\r\n",
@@ -177,10 +192,10 @@ ringing(SipRec) ->
 	Status++Via++From++To++CallId++CSeq	++ContentLen++"\r\n".
 
 ok(SipRec) ->
-	?info("OK...", []),
+	?info("Composing message: OK", []),
 	%% TODO:: sip version ??
 	Status = "SIP/2.0 200 OK\r\n",
-	Via = SipRec#sip_message.via ++ "\r\n",
+	Via = concat_via_values(SipRec#sip_message.via) ++ "\r\n",
 	%% TODO:: what is tag and how to create it?
 	Tag = "37GkEhwl6",
 	From = "From: " ++ SipRec#sip_message.from ++ "\r\n",
@@ -191,11 +206,11 @@ ok(SipRec) ->
 	Status++Via++From++To++CallId++CSeq++ContentLen++"\r\n".
 
 ok_sdp(SipRec, SocketRec) ->
-	?info("OK SDP...", []),
+	?info("Composing messege: OK with SDP", []),
 	Status = "SIP/2.0 200 OK\r\n",
 	%% TODO:: branch ??
 	%  ++ ";received=" ++ simplesip_sip_util:local_ip_v4_str()
-	Via = SipRec#sip_message.via ++ "\r\n",
+	Via = concat_via_values(SipRec#sip_message.via) ++ "\r\n",
 	%% TODO:: what is tag and how to create it?
 	Tag = "37GkEhwl6",
 	From = "From: " ++ SipRec#sip_message.from ++ "\r\n",
@@ -234,13 +249,13 @@ ok_sdp(SipRec, SocketRec) ->
 % 	Status++Via++From++To++CallId++CSeq++Date++ContentType++ContentLen++"\r\n"++SdpRes.
 
 registered(SipRec, SocketRec) ->
-	?info("Registered...", []),
+	?info("Composing messege: OK for REGISTER", []),
 	%% TODO:: sip version ??
 	%% TODO:: sip or sips ??
 	Status = "SIP/2.0 200 OK\r\n",
 	% Via = SipRec#sip_message.via ++ ";received=" ++ simplesip_sip_util:local_ip_v4_str() ++ "\r\n",
 	ViaTokens = string:tokens(lists:nth(1, SipRec#sip_message.via), ";"),
-	?info("ViaTokens : ~p", [ViaTokens]),
+	% ?info("ViaTokens : ~p", [ViaTokens]),
 	case lists:member("rport", ViaTokens) of
 		true ->
 			?info("rport TRUE", []),
@@ -251,7 +266,7 @@ registered(SipRec, SocketRec) ->
 			ReceivedPort = (SocketRec#socket_rec.client_addr)#client_addr.in_port_no,
 			Via = lists:concat([ViaList2, "received=", ReceivedIp, ";rport=", ReceivedPort, "\r\n"]);
 		false ->
-			Via = SipRec#sip_message.via ++ "\r\n"
+			Via = concat_via_values(SipRec#sip_message.via) ++ "\r\n"
 	end,
 	%% TODO:: what is tag and how to create it?
 	Tag = "37GkEhwl6",
@@ -279,10 +294,11 @@ registered(SipRec, SocketRec) ->
 	Status++Via++From++To++CallId++CSeq++Contact++Date++ContentLen++"\r\n".
 
 unauthorized(SipRec) ->
-	?info("unauthorized ...", []),
+	?info("Composing messege: UNAUTHORIZED with challenge", []),
 	%% TODO:: sip version ??
 	Status = "SIP/2.0 401 Unauthorized\r\n",
-	Via = SipRec#sip_message.via ++ ";received=" ++ simplesip_sip_util:local_ip_v4_str() ++ "\r\n",
+	% Via = SipRec#sip_message.via ++ ";received=" ++ simplesip_sip_util:local_ip_v4_str() ++ "\r\n",
+	Via = concat_via_values(SipRec#sip_message.via) ++ ";received=" ++ simplesip_sip_util:local_ip_v4_str() ++ "\r\n",
 	%% TODO:: what is tag and how to create it?
 	Tag = "1410948204",
 	From = "From: " ++ SipRec#sip_message.from ++ "\r\n",
@@ -290,6 +306,7 @@ unauthorized(SipRec) ->
 	CallId = SipRec#sip_message.'call-id' ++ "\r\n",
 	CSeq = SipRec#sip_message.cseq ++ "\r\n",
 	%% TODO:: sip or sips ??
+	%% TODO:: Remove hardcoded values (ex: Digest realm)
 	Authenticate = "WWW-Authenticate: Digest realm=harsha@192.168.8.100:8789, qop=\"auth\", nonce=\"\", opaque=\"\", stale=FALSE, algorithm=MD5\r\n",
 	ContentLen = "Content-Length: 0\r\n",
 	Status++Via++From++To++CallId++CSeq++Authenticate++ContentLen++"\r\n".
@@ -310,7 +327,6 @@ is_authorized(SocketRec, SipRec) ->
 
 authorize(SipRec) ->
 	%% TODO:: check authorization
-
 	passed.
 
 cancel(SipRec) ->
@@ -388,6 +404,21 @@ concat_attributes(Line, [Attrib | Rest]) ->
 					concat_attributes(Line, Rest)
 			end
 	end.
+
+concat_via_values(Values) ->
+  Count = length(Values),
+  Fun = fun (Str, {AccStr, X}) ->
+    if
+	X > 1 ->
+          {AccStr ++ Str ++ "\r\n", X - 1};
+	true ->
+	  {AccStr ++ Str, X - 1}
+    end
+  end,
+  {ViaStr, _} = lists:foldl(Fun, {"", Count}, Values),
+  ViaStr.
+    
+
 
 send(Data, SocketRec) ->
 	gen_udp:send(SocketRec#socket_rec.socket, (SocketRec#socket_rec.client_addr)#client_addr.ip, (SocketRec#socket_rec.client_addr)#client_addr.in_port_no, Data).

@@ -3,3 +3,4 @@
 test.erl
 *crash.dump
 *.erl-bk*
+*.DS_Store

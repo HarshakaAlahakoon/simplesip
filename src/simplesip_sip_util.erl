@@ -71,7 +71,7 @@ extract_req_line(Str) ->
 
 %% TODO:: add support for compact-types...ex: 'content-length'==l
 extract_header(SipRec, []) ->
-  	SipRec;
+	SipRec#sip_message{via = lists:reverse(SipRec#sip_message.via)};
 extract_header(SipRec, [Line | Rest]) ->
   	case string:chr(Line, $:) of
     	0 ->
@@ -294,7 +294,8 @@ extract_attribute(Str) ->
 get_compatible_audio(MediaList, AttribList) ->
 	get_compatible_audio(MediaList, AttribList, {[], []}).
 
-get_compatible_audio([], _AttribList, {MediaList, AttribList}) -> MediaList1 = lists:reverse(MediaList),
+get_compatible_audio([], _AttribList, {MediaList, AttribList}) -> 
+	MediaList1 = lists:reverse(MediaList),
 	AttribList1 = lists:reverse(AttribList),
 	{MediaList1, AttribList1};
 get_compatible_audio([Media | Rest], AttribList, Acc) ->
@@ -321,7 +322,10 @@ match_sdp_payload_type(ClientPayloadList, ClientAttrs, SvrRtpList) ->
 	match_sdp_payload_type(ClientPayloadList, ClientAttrs, SvrRtpList, {[], []}).
 
 match_sdp_payload_type([], _ClientAttrs, _SvrRtpList, Acc) ->
-	{ok, Acc};
+	{PayloadList, AttribList} = Acc,
+	PayloadList1 = lists:reverse(PayloadList),
+	AttribList1 = lists:reverse(AttribList),
+	{ok, {PayloadList1, AttribList1}};
 match_sdp_payload_type([PayloadType | Rest], ClientAttrs, SvrRtpList, Acc) ->
 	Acc1 = match_sdp_payload_type(PayloadType, ClientAttrs, SvrRtpList, Acc),
 	match_sdp_payload_type(Rest, ClientAttrs, SvrRtpList, Acc1);
